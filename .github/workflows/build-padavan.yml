@@ -1,13 +1,13 @@
 #修改TNAME: K2P 中的K2P为你需要编译的型号，注意名称要与configs/templates/目录下的名字相同
 name: Build Padavan
 
-on: 
+on:
   release:
     types: [published]
   push:
     tags:
     - 'v*'
-  #  branches: 
+  #  branches:
   #    - master
 #  schedule:
 #    - cron: 0 8 * * 5
@@ -42,20 +42,29 @@ jobs:
         cd /opt/rt-n56u/toolchain-mipsel
         sh dl_toolchain.sh
         mkdir -p /opt/images/
-    - name: Patch mute mtk_pong_hqos_handler drop log
-      env:
-        KERNEL: 4.4
+
+    # ======================================================================
+    # 屏蔽 hnat/hnat 驱动里的 “xxx:drop (in_dev=...)” 刷屏日志
+    # 原理：把单 tab 缩进的 printk_ratelimited(KERN_WARNING 改成 if (0) printk(KERN_WARNING，
+    #       语句仍能正常编译，但永远不会执行、不会打印；丢包逻辑(NF_DROP)保持不变。
+    # 说明：源码里打印用的是 __func__，日志里的 mtk_pong_hqos_handler:drop 是运行时拼出来的，
+    #       源码中并不存在这个完整字符串，所以不能按该字符串去 grep。
+    # 同时兼容 raeth 与 mediatek 两套驱动目录，文件不存在则跳过，不会中断编译。
+    # ======================================================================
+    - name: Mute hnat drop flood log
       run: |
-        KERNEL_DIR=/opt/rt-n56u/trunk/linux-4.4.x
-        # 递归搜索整个内核驱动目录
-        SRC_FILE=$(grep -rl "mtk_pong_hqos_handler" ${KERNEL_DIR}/drivers --include="*.c")
-        echo "Search result file: $SRC_FILE"
-        if [ -z "$SRC_FILE" ]; then
-          echo "WARNING: Not found mtk_pong_hqos_handler, skip patch, continue build"
-          exit 0
-        fi
-        echo "Patching file: $SRC_FILE"
-        sed -i '/mtk_pong_hqos_handler:drop/s/^pr_info/\/\/pr_info/g' "$SRC_FILE"
+        KDIR=/opt/rt-n56u/trunk/linux-4.4.x/drivers/net/ethernet
+        for f in \
+          "$KDIR/raeth/mtk_hnat/hnat_nf_hook.c" \
+          "$KDIR/mediatek/mtk_hnat/hnat_nf_hook.c" ; do
+          if [ -f "$f" ]; then
+            echo "Patching: $f"
+            sed -i 's/^\tprintk_ratelimited(KERN_WARNING$/\tif (0) printk(KERN_WARNING/' "$f"
+          else
+            echo "Skip (file not found): $f"
+          fi
+        done
+
     - name: Build Firmware
       env:
         TNAME: JDCLOUD-RE-SP-01B
