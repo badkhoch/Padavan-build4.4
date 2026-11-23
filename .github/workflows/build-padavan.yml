@@ -42,6 +42,16 @@ jobs:
         cd /opt/rt-n56u/toolchain-mipsel
         sh dl_toolchain.sh
         mkdir -p /opt/images/
+    # ========== 新增：屏蔽 mtk_pong_hqos_handler:drop 日志 ==========
+    - name: Patch mtk ppe qos mute drop log
+      env:
+        KERNEL: 4.4
+      run: |
+        cd /opt/rt-n56u/trunk/linux-4.4.x/drivers/net/ethernet/mediatek/
+        # 注释掉这条pr_info打印
+        sed -i '/mtk_pong_hqos_handler:drop/s/^pr_info/\/\/pr_info/g' mtk_ppe_qos.c
+        # 如果上面文件不存在，执行下面这句排查，看在哪个文件
+        # grep -r "mtk_pong_hqos_handler" /opt/rt-n56u/trunk/linux-4.4.x/drivers/
     - name: Build Firmware
       env:
         TNAME: JDCLOUD-RE-SP-01B
