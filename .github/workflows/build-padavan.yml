@@ -1,5 +1,4 @@
 name: Build Padavan
-
 on:
   release:
     types: [published]
@@ -17,6 +16,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@master
+
       - name: Initialization environment
         env:
           DEBIAN_FRONTEND: noninteractive
@@ -25,6 +25,7 @@ jobs:
           sudo apt-get -y install unzip libtool-bin curl cmake gperf gawk flex bison nano xxd fakeroot \
           cpio git python3-docutils python-is-python3 gettext automake autopoint texinfo build-essential help2man \
           pkg-config zlib1g-dev libgmp3-dev libmpc-dev libmpfr-dev libncurses5-dev libltdl-dev wget
+
       - name: Clone source code
         env:
           KERNEL: 4.4
@@ -37,33 +38,17 @@ jobs:
           cd /opt/rt-n56u/toolchain-mipsel
           sh dl_toolchain.sh
           mkdir -p /opt/images/
-      - name: Patch mute HWNAT mtk_pong_hqos_handler:drop
+
+      - name: Patch logd filter, drop mtk_pong_hqos_handler log (NOT disable HQoS)
         run: |
           cd /opt/rt-n56u/trunk
-          echo "🔍 Search string: mtk_pong_hqos_handler:drop"
-          ALL_FOUND=$(find linux-4.4.x -type f -name "*.c" -exec grep -l "mtk_pong_hqos_handler:drop" {} \;)
-          echo "All found files:"
-          echo "$ALL_FOUND"
+          LOGD_CONF="user/etc/logd.conf"
+          # 追加过滤规则，匹配关键字直接丢弃
+          echo "" >> $LOGD_CONF
+          echo "# Filter: drop mtk_pong_hqos_handler spam log" >> $LOGD_CONF
+          echo 'drop kernel mtk_pong_hqos_handler' >> $LOGD_CONF
+          echo "✅ 已写入logd过滤规则到 $LOGD_CONF"
 
-          TARGET_FILE=$(echo "$ALL_FOUND" | head -n1)
-
-          if [ -z "$TARGET_FILE" ];then
-            echo "⚠️ 未找到字面串 mtk_pong_hqos_handler:drop，内核里是格式化打印，跳过补丁"
-            exit 0
-          fi
-
-          echo "✅ Select file: $TARGET_FILE"
-          echo "==== Before patch ===="
-          grep -n "mtk_pong_hqos_handler:drop" "$TARGET_FILE"
-
-          sed -i -E '/mtk_pong_hqos_handler:drop/s/^[[:space:]]*(printk|pr_info|printk_ratelimited)/\/\/\1/g' "$TARGET_FILE"
-
-          echo "==== After patch ===="
-          if grep -q "mtk_pong_hqos_handler:drop" "$TARGET_FILE";then
-            echo "⚠️ 匹配行仍然存在，注释失败"
-          else
-            echo "✅ HQoS drop 刷屏日志注释完成"
-          fi
       - name: Build Firmware
         env:
           TNAME: JDCLOUD-RE-SP-01B
@@ -137,6 +122,7 @@ jobs:
           cd ..
           sudo ./build_firmware_modify $TNAME 0
           sudo mv -f images/*.trx /opt/images/
+
       - name : Upload packages
         uses: actions/upload-artifact@master
         if: always()
