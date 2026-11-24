@@ -40,17 +40,17 @@ jobs:
       - name: Patch mute HWNAT mtk_pong_hqos_handler:drop
         run: |
           KERNEL_DIR=/opt/rt-n56u/trunk/linux-4.4.x
-          FILES_HQOS=$(grep -rl "mtk_pong_hqos_handler" ${KERNEL_DIR}/drivers --include="*.c" || true)
+          FILES_HQOS=$(grep -rl "mtk_pong_hqos_handler:drop" ${KERNEL_DIR}/drivers --include="*.c" || true)
           echo "Found HQOS files:"
           echo "$FILES_HQOS"
           echo "$FILES_HQOS" | while read -r f; do
             if [ -f "$f" ]; then
               echo "Patching HQOS file: $f"
               echo "==== Before patch ===="
-              grep -n 'mtk_pong_hqos_handler:' "$f" || echo "No line match"
-              sed -i '/mtk_pong_hqos_handler:/s/[[:space:]]*\(printk\|pr_info\|printk_ratelimited\)/\/\/\1/g' "$f"
+              grep -n 'mtk_pong_hqos_handler:drop' "$f" || echo "No line match"
+              sed -i -E 's/(printk|pr_info)("mtk_pong_hqos_handler:drop)/\/\/\1\2/g' "$f"
               echo "==== After patch ===="
-              grep -n 'mtk_pong_hqos_handler:' "$f" || echo "✅ 注释成功"
+              grep -n 'mtk_pong_hqos_handler:drop' "$f" || echo "✅ 注释成功，这条日志已屏蔽"
             else
               echo "Skip, file not exist: $f"
             fi
