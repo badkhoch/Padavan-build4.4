@@ -39,17 +39,30 @@ jobs:
           mkdir -p /opt/images/
       - name: Patch mute HWNAT mtk_pong_hqos_handler:drop
         run: |
-          TARGET_FILE="/opt/rt-n56u/trunk/linux-4.4.x/drivers/net/ethernet/mediatek/ppe/ppe_hqos.c"
-          if [ -f "$TARGET_FILE" ]; then
-            echo "Patching file: $TARGET_FILE"
-            echo "==== Before patch ===="
-            grep -n "mtk_pong_hqos_handler" "$TARGET_FILE" || echo "Not found func"
-            sed -i -E '/mtk_pong_hqos_handler:drop/s/^[[:space:]]*(printk|pr_info|printk_ratelimited)/\/\/\1/g' "$TARGET_FILE"
-            echo "==== After patch ===="
-            grep -n "mtk_pong_hqos_handler:drop" "$TARGET_FILE" || echo "✅ 注释成功，这条日志已屏蔽"
+          cd /opt/rt-n56u/trunk
+          echo "🔍 Searching mtk_pong_hqos_handler in linux-4.4.x ..."
+          ALL_FOUND=$(find linux-4.4.x -type f -name "*.c" -exec grep -l "mtk_pong_hqos_handler" {} \;)
+          echo "All found files:"
+          echo "$ALL_FOUND"
+
+          TARGET_FILE=$(echo "$ALL_FOUND" | head -n1)
+
+          if [ -z "$TARGET_FILE" ];then
+            echo "⚠️ 未找到包含 mtk_pong_hqos_handler 的源码文件，跳过补丁，继续编译"
+            exit 0
+          fi
+
+          echo "✅ Select file: $TARGET_FILE"
+          echo "==== Before patch ===="
+          grep -n "mtk_pong_hqos_handler:drop" "$TARGET_FILE" || echo "Not found log line in this file"
+
+          sed -i -E '/mtk_pong_hqos_handler:drop/s/^[[:space:]]*(printk|pr_info|printk_ratelimited)/\/\/\1/g' "$TARGET_FILE"
+
+          echo "==== After patch ===="
+          if grep -q "mtk_pong_hqos_handler:drop" "$TARGET_FILE";then
+            echo "⚠️ 匹配行仍然存在，注释失败"
           else
-            echo "❌ ppe_hqos.c 文件不存在，路径不对"
-            ls -la /opt/rt-n56u/trunk/linux-4.4.x/drivers/net/ethernet/mediatek/ppe/ || true
+            echo "✅ HQoS drop 刷屏日志注释完成"
           fi
       - name: Build Firmware
         env:
