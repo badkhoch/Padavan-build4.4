@@ -30,14 +30,14 @@ jobs:
           KERNEL: 4.4
         run: |
           if [ $KERNEL = "4.4" ] ; then
-          git clone --depth=1 https://github.com/MeIsReallyBa/padavan-4.4.git /opt/rt-n56u
+            git clone --depth=1 https://github.com/MeIsReallyBa/padavan-4.4.git /opt/rt-n56u
           else
-          git clone --depth=1 https://github.com/chongshengB/rt-n56u.git /opt/rt-n56u
+            git clone --depth=1 https://github.com/chongshengB/rt-n56u.git /opt/rt-n56u
           fi
           cd /opt/rt-n56u/toolchain-mipsel
           sh dl_toolchain.sh
           mkdir -p /opt/images/
-      - name: Patch mute all HWNAT/PPE flood logs
+      - name: Patch mute HWNAT mtk_pong_hqos_handler:drop
         run: |
           KERNEL_DIR=/opt/rt-n56u/trunk/linux-4.4.x
           FILES_HQOS=$(grep -rl "mtk_pong_hqos_handler" ${KERNEL_DIR}/drivers --include="*.c" || true)
@@ -46,20 +46,24 @@ jobs:
           echo "$FILES_HQOS" | while read -r f; do
             if [ -f "$f" ]; then
               echo "Patching HQOS file: $f"
-              sed -i '/printk_ratelimited.*drop/s/[[:space:]]*printk_ratelimited/\/\/printk_ratelimited/g' "$f"
+              echo "==== Before patch ===="
+              grep -n 'mtk_pong_hqos_handler:drop' "$f" || echo "No line match"
+              sed -i '/mtk_pong_hqos_handler:drop/s/[[:space:]]*\(printk\|pr_info\|printk_ratelimited\)/\/\/\1/g' "$f"
+              echo "==== After patch ===="
+              grep -n 'mtk_pong_hqos_handler:drop' "$f" || echo "✅ 注释成功"
             else
               echo "Skip, file not exist: $f"
             fi
           done
 
           FILES_PSE=$(grep -rl "check pse fid Q7:set_get_fid" ${KERNEL_DIR}/drivers --include="*.c" || true)
-          echo "Found PSE files:"
+          echo -e "\nFound PSE files:"
           echo "$FILES_PSE"
           echo "$FILES_PSE" | while read -r f; do
             if [ -f "$f" ]; then
               echo "Patching PSE file: $f"
-              sed -i '/check pse fid Q7:set_get_fid/s/[[:space:]]*printk/\/\/printk/g' "$f"
-              sed -i '/flush result =/s/[[:space:]]*printk/\/\/printk/g' "$f"
+              sed -i '/check pse fid Q7:set_get_fid/s/[[:space:]]*\(printk\|pr_info\)/\/\/\1/g' "$f"
+              sed -i '/flush result =/s/[[:space:]]*\(printk\|pr_info\)/\/\/\1/g' "$f"
             else
               echo "Skip, file not exist: $f"
             fi
@@ -71,8 +75,8 @@ jobs:
         run: |
           cd /opt/rt-n56u/trunk
           if [ ! -f configs/templates/$TNAME.config ] ; then
-          echo "configs/templates/$TNAME.config not found "
-          exit 1
+            echo "configs/templates/$TNAME.config not found "
+            exit 1
           fi
           cp -f configs/templates/$TNAME.config .config
           sed -i 's/CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=n/CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=y/g' .config
@@ -92,46 +96,49 @@ jobs:
           sed -i 's/CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=n/CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=y/g' .config
           ######################################################################
           if [ $KERNEL = "4.4" ] ; then
-          echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SSOBFS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ADBYBY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_DNSFORWARDER=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SRELAY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_XRAY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_V2RAY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_DDNSTO=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SSOBFS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ADBYBY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_DNSFORWARDER=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SRELAY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_XRAY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_V2RAY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_DDNSTO=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ALDRIVER=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=n" >> .config
           else
-          echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SSOBFS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SSSERVER=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_DNSFORWARDER=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ADBYBY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_FRPC=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_FRPS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_TUNSAFE=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SMARTDNS=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SMARTDNSBIN=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_V2RAY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_TROJAN=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_KOOLPROXY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_CADDY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_CADDYBIN=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ADGUARDHOME=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_SRELAY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_WYY=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_WYYBIN=n" >> .config
-          echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_MENTOHUST=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SCUTCLIENT=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SHADOWSOCKS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SSOBFS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SSSERVER=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_DNSFORWARDER=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ADBYBY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_FRPC=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_FRPS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_TUNSAFE=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ALIDDNS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SMARTDNS=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SMARTDNSBIN=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_V2RAY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_TROJAN=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_KOOLPROXY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_CADDY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_CADDYBIN=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ADGUARDHOME=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_SRELAY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_WYY=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_WYYBIN=n" >> .config
+            echo "CONFIG_FIRMWARE_INCLUDE_ZEROTIER=n" >> .config
           fi
           #########################################################################################
           sudo ./clear_tree
+          cd linux-4.4.x
+          sudo make clean
+          cd ..
           sudo ./build_firmware_modify $TNAME 0
           sudo mv -f images/*.trx /opt/images/
       - name : Upload packages
