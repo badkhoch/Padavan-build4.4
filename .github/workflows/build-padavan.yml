@@ -40,21 +40,21 @@ jobs:
       - name: Patch mute HWNAT mtk_pong_hqos_handler:drop
         run: |
           cd /opt/rt-n56u/trunk
-          echo "🔍 Searching mtk_pong_hqos_handler in linux-4.4.x ..."
-          ALL_FOUND=$(find linux-4.4.x -type f -name "*.c" -exec grep -l "mtk_pong_hqos_handler" {} \;)
+          echo "🔍 Search string: mtk_pong_hqos_handler:drop"
+          ALL_FOUND=$(find linux-4.4.x -type f -name "*.c" -exec grep -l "mtk_pong_hqos_handler:drop" {} \;)
           echo "All found files:"
           echo "$ALL_FOUND"
 
           TARGET_FILE=$(echo "$ALL_FOUND" | head -n1)
 
           if [ -z "$TARGET_FILE" ];then
-            echo "⚠️ 未找到包含 mtk_pong_hqos_handler 的源码文件，跳过补丁，继续编译"
+            echo "⚠️ 未找到字面串 mtk_pong_hqos_handler:drop，内核里是格式化打印，跳过补丁"
             exit 0
           fi
 
           echo "✅ Select file: $TARGET_FILE"
           echo "==== Before patch ===="
-          grep -n "mtk_pong_hqos_handler:drop" "$TARGET_FILE" || echo "Not found log line in this file"
+          grep -n "mtk_pong_hqos_handler:drop" "$TARGET_FILE"
 
           sed -i -E '/mtk_pong_hqos_handler:drop/s/^[[:space:]]*(printk|pr_info|printk_ratelimited)/\/\/\1/g' "$TARGET_FILE"
 
