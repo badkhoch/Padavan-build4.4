@@ -39,15 +39,13 @@ jobs:
           sh dl_toolchain.sh
           mkdir -p /opt/images/
 
-      - name: Patch logd filter, drop mtk_pong_hqos_handler log (NOT disable HQoS)
+      - name: Patch kernel - comment mtk_pong_hqos_handler printk (keep HQoS drop logic)
         run: |
           cd /opt/rt-n56u/trunk
-          LOGD_CONF="user/etc/logd.conf"
-          # 追加过滤规则，匹配关键字直接丢弃
-          echo "" >> $LOGD_CONF
-          echo "# Filter: drop mtk_pong_hqos_handler spam log" >> $LOGD_CONF
-          echo 'drop kernel mtk_pong_hqos_handler' >> $LOGD_CONF
-          echo "✅ 已写入logd过滤规则到 $LOGD_CONF"
+          FILE=linux-4.4.x/drivers/net/ethernet/mediatek/mtk_hnat/hnat_nf_hook.c
+          # 注释整块 printk_ratelimited 日志打印，NF_DROP 保留
+          sed -i '/printk_ratelimited(KERN_WARNING/,/skb_hnat_alg(skb))/c\	/*printk_ratelimited(KERN_WARNING\n				"%s:drop (in_dev=%s, iif=0x%x, CB2=0x%x, ppe_hash=0x%x, sport=0x%x, reason=0x%x, alg=0x%x)\\n",\n				__func__, state->in->name, skb_hnat_iface(skb),\n				HNAT_SKB_CB2(skb)->magic, skb_hnat_entry(skb),\n				skb_hnat_sport(skb), skb_hnat_reason(skb),\n				skb_hnat_alg(skb));*/' $FILE
+          echo "✅ 内核补丁完成：注释 mtk_pong_hqos_handler 打印，HQoS 丢包逻辑不变"
 
       - name: Build Firmware
         env:
