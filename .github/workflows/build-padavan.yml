@@ -39,22 +39,18 @@ jobs:
           mkdir -p /opt/images/
       - name: Patch mute HWNAT mtk_pong_hqos_handler:drop
         run: |
-          KERNEL_DIR=/opt/rt-n56u/trunk/linux-4.4.x
-          FILES_HQOS=$(grep -rl "mtk_pong_hqos_handler" ${KERNEL_DIR}/drivers --include="*.c" || true)
-          echo "Found HQOS files:"
-          echo "$FILES_HQOS"
-          echo "$FILES_HQOS" | while read -r f; do
-            if [ -f "$f" ]; then
-              echo "Patching HQOS file: $f"
-              echo "==== Before patch ===="
-              grep -n 'drop' "$f" | grep 'mtk_pong_hqos_handler' || echo "No line match"
-              sed -i -E '/mtk_pong_hqos_handler.*drop/s/[[:space:]]*(printk|pr_info|printk_ratelimited)/\/\/\1/g' "$f"
-              echo "==== After patch ===="
-              grep -n 'drop' "$f" | grep 'mtk_pong_hqos_handler' || echo "✅ 注释成功，这条日志已屏蔽"
-            else
-              echo "Skip, file not exist: $f"
-            fi
-          done
+          TARGET_FILE="/opt/rt-n56u/trunk/linux-4.4.x/drivers/net/ethernet/mediatek/ppe/ppe_hqos.c"
+          if [ -f "$TARGET_FILE" ]; then
+            echo "Patching file: $TARGET_FILE"
+            echo "==== Before patch ===="
+            grep -n "mtk_pong_hqos_handler" "$TARGET_FILE" || echo "Not found func"
+            sed -i -E '/mtk_pong_hqos_handler:drop/s/^[[:space:]]*(printk|pr_info|printk_ratelimited)/\/\/\1/g' "$TARGET_FILE"
+            echo "==== After patch ===="
+            grep -n "mtk_pong_hqos_handler:drop" "$TARGET_FILE" || echo "✅ 注释成功，这条日志已屏蔽"
+          else
+            echo "❌ ppe_hqos.c 文件不存在，路径不对"
+            ls -la /opt/rt-n56u/trunk/linux-4.4.x/drivers/net/ethernet/mediatek/ppe/ || true
+          fi
       - name: Build Firmware
         env:
           TNAME: JDCLOUD-RE-SP-01B
