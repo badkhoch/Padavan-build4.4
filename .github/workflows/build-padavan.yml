@@ -47,23 +47,10 @@ jobs:
             if [ -f "$f" ]; then
               echo "Patching HQOS file: $f"
               echo "==== Before patch ===="
-              grep -n 'mtk_pong_hqos_handler:drop' "$f" || echo "No line match"
-              sed -i '/mtk_pong_hqos_handler:drop/s/[[:space:]]*\(printk\|pr_info\|printk_ratelimited\)/\/\/\1/g' "$f"
+              grep -n 'mtk_pong_hqos_handler:' "$f" || echo "No line match"
+              sed -i '/mtk_pong_hqos_handler:/s/[[:space:]]*\(printk\|pr_info\|printk_ratelimited\)/\/\/\1/g' "$f"
               echo "==== After patch ===="
-              grep -n 'mtk_pong_hqos_handler:drop' "$f" || echo "✅ 注释成功"
-            else
-              echo "Skip, file not exist: $f"
-            fi
-          done
-
-          FILES_PSE=$(grep -rl "check pse fid Q7:set_get_fid" ${KERNEL_DIR}/drivers --include="*.c" || true)
-          echo -e "\nFound PSE files:"
-          echo "$FILES_PSE"
-          echo "$FILES_PSE" | while read -r f; do
-            if [ -f "$f" ]; then
-              echo "Patching PSE file: $f"
-              sed -i '/check pse fid Q7:set_get_fid/s/[[:space:]]*\(printk\|pr_info\)/\/\/\1/g' "$f"
-              sed -i '/flush result =/s/[[:space:]]*\(printk\|pr_info\)/\/\/\1/g' "$f"
+              grep -n 'mtk_pong_hqos_handler:' "$f" || echo "✅ 注释成功"
             else
               echo "Skip, file not exist: $f"
             fi
